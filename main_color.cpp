@@ -17,7 +17,7 @@
 #define B2 BIT3         //PE3
 #define LATCH BIT3      //PF3
 #define CLK BIT1        //PF1
-#define OE BIT4         //PF4
+#define OE BIT4         //PF4 (note this is active low)
 #define A BIT0          //PD0
 #define B BIT1          //PD1
 #define C BIT2          //PD2
@@ -137,11 +137,15 @@ int main() {
 
 
     while(1) {
-
+        
+        //Here i represents the rows. Since the matrix can display two rows at once then we only need to do 32 instead of 64.
         for (unsigned i = 0; i < 32; i++) {
 
 //            msDelay(0.5);
-
+            
+            //Basically shift in data for the two rows needed. 
+            //This indexing just goes through the array based on the current row. 
+            //For example if i = 1 (aka row 2) then, we start at the j=64 and go until j=128.
             for (unsigned j = i * 64; j < 64 * (1+i); j++) {
                 GPIO_PORTF_DATA_R &= ~CLK;
 
@@ -166,7 +170,8 @@ int main() {
                     GPIO_PORTB_DATA_R |= G1;
 //                    GPIO_PORTB_DATA_R &= ~B1;
                 }
-
+                
+                //The matrix displays a second row so we must jump to that corresponding "row" in the array.
                 if(colors[j+2048] == 0x1f) {
 //                    GPIO_PORTE_DATA_R |= R2;
                     GPIO_PORTE_DATA_R |= G2;
@@ -188,16 +193,20 @@ int main() {
                 GPIO_PORTF_DATA_R |= CLK;
 
            }
-
+           
+           //Assert the blanking signal to blank screen
            GPIO_PORTF_DATA_R |= OE;
-
+           
+           //Sets the current row address
            //A,B,C,D are in PD0-PD3 but E is PD6 so the below must be used for correct operation.
            //Also note that moving these statements can lead to ghosting.
            GPIO_PORTD_DATA_R &= ~(A | B | C | D | E);
            GPIO_PORTD_DATA_R |= (i & 15) | ((i & BIT4) << 2);
 
+           //Latch the data into the matrix
            GPIO_PORTF_DATA_R |= LATCH;
-
+          
+           //Deassert blanking signal and latch to display colors.
            GPIO_PORTF_DATA_R &= ~(OE | LATCH);
 
 //           msDelay(0.8);
